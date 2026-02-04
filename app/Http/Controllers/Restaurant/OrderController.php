@@ -4,82 +4,105 @@ namespace App\Http\Controllers\Restaurant;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
+    // كل طلبات المطعم
     public function index()
     {
-        $restaurantId = auth('api')->user()
-            ->restaurant
-            ->id;
+        $restaurantId = auth('api')->user()->restaurant->id;
 
-        $orders = Order::where('restaurant_id', $restaurantId)
-            ->with('items.product')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return response()->json($orders);
+        return response()->json(
+            Order::where('restaurant_id', $restaurantId)
+                ->with([
+                    'user:id,name,phone',
+                    'driver:id,name,phone',
+                    'items.product:id,name,price',
+                ])
+                ->latest()
+                ->get()
+        );
     }
-public function updateStatus(Request $request, $id)
-{
-    $request->validate([
-        'status' => 'required|in:accepted,preparing,on_the_way'
-    ]);
 
-    $restaurant = auth('api')->user()->restaurant;
+    // تحديث حالة الطلب (بدون درايفر)
+    public function updateStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:accepted,preparing',
+        ]);
 
-    $order = Order::where('restaurant_id', $restaurant->id)
-        ->where('id', $id)
-        ->firstOrFail();
+        $restaurantId = auth('api')->user()->restaurant->id;
 
-    $order->update([
-        'status' => $request->status
-    ]);
+        $order = Order::where('restaurant_id', $restaurantId)
+            ->where('id', $id)
+            ->firstOrFail();
 
-    return response()->json($order);
-}
+        $allowed = [
+            'pending'  => ['accepted'],
+            'accepted' => ['preparing'],
+        ];
 
-    // public function updateStatus($id)
-    // {
-    //     $order = Order::findOrFail($id);
+        if (
+            !isset($allowed[$order->status]) ||
+            !in_array($request->status, $allowed[$order->status])
+        ) {
+            return response()->json([
+                'message' => 'Invalid order status transition',
+            ], 400);
+        }
 
-    //     $order->update([
-    //         'status' => request('status')
-    //     ]);
+        $order->update([
+            'status' => $request->status,
+        ]);
 
-    //     return response()->json($order);
-    // }
-  public function assignDriver(Request $request, $id)
-{
-    $validated = $request->validate([
-        'driver_id' => [
-            'required',
-            // هذا يتحقق من وجود user بالـ id ودوره driver فقط
-            function ($attribute, $value, $fail) {
-                $driver = \App\Models\User::where('id', $value)
-                                           ->where('role', 'driver')
-                                           ->first();
-                if (!$driver) {
-                    $fail('The selected driver id is invalid.');
-                }
-            }
-        ],
-    ]);
+        return response()->json($order->fresh());
+    }
 
-    $restaurant = auth('api')->user()->restaurant;
+    // إسناد درايفر (خطوة منفصلة)
+    public function assignDriver(Request $request, $id)
+    {
+        $request->validate([
+            'driver_id' => 'required|exists:users,id',
+        ]);
 
-    $order = Order::where('restaurant_id', $restaurant->id)
-                  ->where('id', $id)
-                  ->firstOrFail();
+        $restaurantId = auth('api')->user()->restaurant->id;
 
-    $order->update([
-        'driver_id' => $validated['driver_id'],
-        'status' => 'on_the_way'
-    ]);
+        $driver = User::where('id', $request->driver_id)
+            ->where('role', 'driver')
+            ->where('status', 'active')
+            ->first();
 
-    return response()->json($order);
-}
+        if (!$driver) {
+            return response()->json([
+                'message' => 'Invalid or inactive driver',
+            ], 422);
+        }
 
+        $order = Order::where('restaurant_id', $restaurantId)
+            ->where('id', $id)
+            ->firstOrFail();
 
+        if ($order->status !== 'preparing') {
+            return response()->json([
+                'message' => 'Order must be preparing before assigning driver',
+            ], 400);
+        }
+
+        if ($order->driver_id) {
+            return response()->json([
+                'message' => 'Driver already assigned',
+            ], 409);
+        }
+
+        $order->update([
+            'driver_id' => $driver->id,
+            'status'    => 'on_the_way',
+        ]);
+
+        return response()->json(
+            $order->load('driver:id,name,phone')
+        );
+    }
 }

@@ -13,7 +13,12 @@ class User extends Authenticatable implements JWTSubject
     use HasFactory, Notifiable;
 
     protected $fillable = [
-        'name','email','phone','password','role'
+        'name',
+        'email',
+        'phone',
+        'password',
+        'role',
+        'status'
     ];
 
     protected $hidden = [
@@ -33,5 +38,4 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasOne(Restaurant::class);
     }
-
 }

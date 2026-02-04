@@ -3,58 +3,116 @@
 namespace App\Http\Controllers\Restaurant;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
-use App\Models\Restaurant;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use App\Models\Product;
+use App\Models\Category;
 
 class ProductController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $restaurant = Restaurant::where('user_id', auth('api')->id())->first();
-        return response()->json($restaurant->products()->with('category')->get());
+        $restaurant = auth('api')->user()->restaurant;
+
+        if (!$restaurant) {
+            return response()->json(['message' => 'Restaurant profile not found'], 404);
+        }
+
+        $products = Product::where('restaurant_id', $restaurant->id)
+            ->when($request->filled('category_id'), function ($q) use ($request) {
+                $q->where('category_id', $request->category_id);
+            })
+            ->latest()
+            ->get();
+
+        return response()->json($products);
     }
 
-    public function store(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'category_id' => 'required|exists:categories,id',
-            'price' => 'required|numeric|min:0',
-            'description' => 'nullable|string',
-        ]);
+  public function store(Request $request)
+{
+    $restaurant = auth('api')->user()->restaurant;
 
-        $restaurant = Restaurant::where('user_id', auth('api')->id())->first();
+    if (!$restaurant) {
+        return response()->json([
+            'message' => 'Restaurant profile not found'
+        ], 404);
+    }
 
-        $product = Product::create([
+    $request->validate([
+        'name'          => 'required|string|max:255',
+        'price'         => 'required|numeric|min:0',
+        'category_id'   => 'nullable|exists:categories,id',
+        'category_name' => 'nullable|string|max:255',
+        'description'   => 'nullable|string|max:1000',
+    ]);
+
+    // تحديد القسم
+    if ($request->category_id) {
+
+        $category = Category::where('id', $request->category_id)
+            ->where('restaurant_id', $restaurant->id)
+            ->firstOrFail();
+
+    } elseif ($request->category_name) {
+
+        $category = Category::firstOrCreate([
             'restaurant_id' => $restaurant->id,
-            'category_id' => $request->category_id,
-            'name' => $request->name,
-            'description' => $request->description,
-            'price' => $request->price,
+            'name' => strtolower(trim($request->category_name)),
         ]);
 
-        return response()->json($product, 201);
+    } else {
+        return response()->json([
+            'message' => 'Category is required'
+        ], 422);
     }
+
+    // إنشاء المنتج
+    $product = Product::create([
+        'name' => $request->name,
+        'price' => floatval($request->price),
+        'description' => $request->description,
+        'category_id' => $category->id,
+        'restaurant_id' => $restaurant->id,
+    ]);
+
+    return response()->json($product, 201);
+}
+
 
     public function update(Request $request, $id)
     {
-        $product = Product::findOrFail($id);
+        $restaurant = auth('api')->user()->restaurant;
 
-        $request->validate([
+        $product = Product::where('restaurant_id', $restaurant->id)
+            ->findOrFail($id);
+
+        $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'price' => 'sometimes|numeric|min:0',
-            'is_available' => 'sometimes|boolean',
+
+            'category_id' => [
+                'sometimes',
+                Rule::exists('categories', 'id')
+                    ->where('restaurant_id', $restaurant->id)
+            ],
+
+            'description' => 'nullable|string|max:1000',
         ]);
 
-        $product->update($request->only(['name', 'price', 'is_available']));
+        $product->update($validated);
 
         return response()->json($product);
     }
 
     public function destroy($id)
     {
-        Product::findOrFail($id)->delete();
-        return response()->json(['message' => 'Product deleted']);
+        $restaurant = auth('api')->user()->restaurant;
+
+        $product = Product::where('restaurant_id', $restaurant->id)
+            ->findOrFail($id);
+
+        $product->delete();
+
+        return response()->json(['message' => 'Deleted successfully']);
     }
 }

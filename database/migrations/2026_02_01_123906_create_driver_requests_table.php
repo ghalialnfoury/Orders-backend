@@ -11,9 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-                $table->id();
+        Schema::create('driver_requests', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->string('status')->default('pending');
+            $table->timestamps();
         });
+
     }
 
     /**
@@ -21,8 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            //
-        });
+        Schema::dropIfExists('driver_requests');
     }
 };

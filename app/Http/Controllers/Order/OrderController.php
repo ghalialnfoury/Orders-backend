@@ -7,82 +7,128 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
+    /**
+     * إنشاء طلب جديد
+     */
     public function store(Request $request)
     {
         $request->validate([
-            'restaurant_id' => 'required|exists:restaurants,id',
-            'items' => 'required|array',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|integer|min:1',
+            'restaurant_id'        => 'required|exists:restaurants,id',
+            'items'                => 'required|array|min:1',
+            'items.*.product_id'   => 'required|exists:products,id',
+            'items.*.quantity'     => 'required|integer|min:1',
         ]);
 
-        $total = 0;
+        return DB::transaction(function () use ($request) {
 
-        $order = Order::create([
-            'user_id' => auth('api')->id(),
-            'restaurant_id' => $request->restaurant_id,
-            'status' => 'pending',
-        ]);
-
-        foreach ($request->items as $item) {
-            $product = Product::find($item['product_id']);
-            $price = $product->price * $item['quantity'];
-            $total += $price;
-
-            OrderItem::create([
-                'order_id' => $order->id,
-                'product_id' => $product->id,
-                'quantity' => $item['quantity'],
-                'price' => $price,
+            $order = Order::create([
+                'user_id'        => auth('api')->id(),
+                'restaurant_id'  => $request->restaurant_id,
+                'status'         => 'pending',
+                'payment_status' => 'unpaid',
+                'total_price'    => 0,
             ]);
-        }
 
-        $order->update(['total_price' => $total]);
+            $total = 0;
 
-        return response()->json($order->load('items'), 201);
+            foreach ($request->items as $item) {
+                $product = Product::select('id', 'price')
+                    ->findOrFail($item['product_id']);
+
+                $itemTotal = $product->price * $item['quantity'];
+                $total += $itemTotal;
+
+                OrderItem::create([
+                    'order_id'   => $order->id,
+                    'product_id'=> $product->id,
+                    'quantity'  => $item['quantity'],
+                    'price'     => $itemTotal,
+                ]);
+            }
+
+            $order->update([
+                'total_price' => $total
+            ]);
+
+            return response()->json(
+                $order->load([
+                    'restaurant:id,name',
+                    'items.product:id,name,price',
+                ]),
+                201
+            );
+        });
     }
 
+    /**
+     * طلبات المستخدم
+     */
     public function myOrders()
     {
-        return Order::where('user_id', auth('api')->id())
-            ->with('items.product')
-            ->get();
+        return response()->json(
+            Order::where('user_id', auth('api')->id())
+                ->with([
+                    'restaurant:id,name',
+                    'items.product:id,name,price',
+                ])
+                ->orderByDesc('created_at')
+                ->get()
+        );
     }
-    // اختيار طريقة الدفع
-public function setPaymentMethod(Request $request, $id)
-{
-    $validated = $request->validate([
-        'payment_method' => 'required|in:cash,card'
-    ]);
 
-    $order = Order::where('user_id', auth('api')->id())
-        ->where('id', $id)
-        ->firstOrFail();
-
-    $order->update([
-        'payment_method' => $validated['payment_method']
-    ]);
-
-    return response()->json($order);
-}
-
-        public function pay($id)
+    /**
+     * تحديد طريقة الدفع
+     */
+    public function setPaymentMethod(Request $request, $id)
     {
-        $order = Order::where('user_id', auth('api')->id())
-            ->where('id', $id)
+        $request->validate([
+            'payment_method' => 'required|in:cash,card',
+        ]);
+
+        $order = Order::where('id', $id)
+            ->where('user_id', auth('api')->id())
             ->firstOrFail();
 
+        if ($order->payment_status === 'paid') {
+            return response()->json([
+                'message' => 'Order already paid'
+            ], 400);
+        }
+
         $order->update([
-            'payment_status' => 'paid'
+            'payment_method' => $request->payment_method,
+        ]);
+
+        return response()->json($order);
+    }
+
+    /**
+     * تأكيد الدفع
+     */
+    public function pay($id)
+    {
+        $order = Order::where('id', $id)
+            ->where('user_id', auth('api')->id())
+            ->firstOrFail();
+
+        if ($order->payment_status === 'paid') {
+            return response()->json([
+                'message' => 'Order already paid'
+            ], 400);
+        }
+
+        $order->update([
+            'payment_status' => 'paid',
+            'paid_at'        => now(),
         ]);
 
         return response()->json([
             'message' => 'Payment successful',
-            'order' => $order
+            'order'   => $order
         ]);
     }
-
 }

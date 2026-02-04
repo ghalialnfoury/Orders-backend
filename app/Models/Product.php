@@ -19,6 +19,16 @@ class Product extends Model
         'is_available',
     ];
 
+    protected $casts = [
+        'is_available' => 'boolean',
+    ];
+
+    protected $attributes = [
+        'is_available' => true,
+    ];
+
+    /* ================= RELATIONS ================= */
+
     public function restaurant()
     {
         return $this->belongsTo(Restaurant::class);
@@ -27,5 +37,21 @@ class Product extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /* ================= SCOPES ================= */
+
+    public function scopeAvailable($query)
+    {
+        return $query->where('is_available', true);
+    }
+
+    /* ================= ACCESSORS ================= */
+
+    public function getImageUrlAttribute()
+    {
+        return $this->image
+            ? asset('storage/products/' . $this->image)
+            : asset('images/default-product.png');
     }
 }

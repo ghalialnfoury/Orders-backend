@@ -16,8 +16,13 @@ class Restaurant extends Model
         'logo',
         'address',
         'is_open',
-        'rating',
     ];
+
+    protected $casts = [
+        'is_open' => 'boolean',
+    ];
+
+    /* ================= RELATIONS ================= */
 
     public function owner()
     {
@@ -32,5 +37,29 @@ class Restaurant extends Model
     public function products()
     {
         return $this->hasMany(Product::class);
+    }
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    public function ratings()
+    {
+        return $this->hasMany(Rating::class);
+    }
+
+    /* ================= ACCESSORS ================= */
+
+    public function getAverageRatingAttribute()
+    {
+        return round($this->ratings()->avg('rating'), 1);
+    }
+
+    /* ================= SCOPES ================= */
+
+    public function scopeOpen($query)
+    {
+        return $query->where('is_open', true);
     }
 }

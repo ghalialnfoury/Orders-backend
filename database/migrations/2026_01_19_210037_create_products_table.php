@@ -19,7 +19,8 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->decimal('price', 8, 2);
             $table->string('image')->nullable();
-            $table->boolean('is_available')->default(true);
+            $table->boolean('is_available')->default(true)->index();
+            $table->index(['restaurant_id', 'category_id']);
             $table->timestamps();
 });
 

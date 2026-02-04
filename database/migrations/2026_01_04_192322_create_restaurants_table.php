@@ -18,7 +18,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->string('logo')->nullable();
             $table->string('address');
-            $table->boolean('is_open')->default(true);
+            $table->boolean('is_open')->default(true)->index();
             $table->decimal('rating', 2, 1)->default(0);
             $table->timestamps();
 });

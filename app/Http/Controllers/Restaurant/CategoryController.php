@@ -4,33 +4,73 @@ namespace App\Http\Controllers\Restaurant;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
-use App\Models\Restaurant;
 use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
+    /**
+     * أقسام المطعم مع المنتجات (لصاحب المطعم)
+     */
     public function index()
     {
-        $restaurant = Restaurant::where('user_id', auth('api')->id())->first();
+        $restaurant = auth('api')->user()->restaurant;
+
+        if (!$restaurant) {
+            return response()->json([
+                'message' => 'Restaurant profile not found'
+            ], 404);
+        }
 
         return response()->json(
-            $restaurant->categories
+            $restaurant->categories()
+                ->with([
+                    'products:id,category_id,name,price,is_available'
+                ])
+                ->orderBy('created_at')
+                ->get()
         );
     }
 
+    /**
+     * إضافة قسم جديد (Restaurant)
+     */
     public function store(Request $request)
     {
-        $request->validate([
+        $restaurant = auth('api')->user()->restaurant;
+
+        if (!$restaurant) {
+            return response()->json([
+                'message' => 'Restaurant profile not found'
+            ], 404);
+        }
+
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
         ]);
 
-        $restaurant = Restaurant::where('user_id', auth('api')->id())->first();
-
         $category = Category::create([
             'restaurant_id' => $restaurant->id,
-            'name' => $request->name,
+            'name' => $validated['name'],
         ]);
 
-        return response()->json($category, 201);
+        return response()->json([
+            'message'  => 'Category created successfully',
+            'category' => $category
+        ], 201);
+    }
+
+    /**
+     * منيو المطعم (Public / Customer)
+     */
+    public function publicMenu($restaurantId)
+    {
+        return response()->json(
+            Category::where('restaurant_id', $restaurantId)
+                ->with([
+                    'products:id,category_id,name,price,is_available'
+                ])
+                ->orderBy('created_at')
+                ->get()
+        );
     }
 }
