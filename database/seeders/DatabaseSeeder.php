@@ -13,29 +13,11 @@ public function run(): void
     DB::table('users')->insert([
         [
             'name' => 'Admin',
-            'email' => 'admin@test.com',
+            'email' => 'ghalialnfoury@gmail.com',
+             "phone": "0504795417",
             'password' => bcrypt('123456'),
+            "role": "Admin"
         ]
     ]);
 
-    DB::table('restaurants')->insert([
-        [
-            'name' => 'Al Sham Restaurant',
-            'description' => 'Best Syrian food',
-        ]
-    ]);
-
-    DB::table('products')->insert([
-        [
-            'name' => 'Shawarma',
-            'price' => 25,
-            'restaurant_id' => 1
-        ],
-        [
-            'name' => 'Kebab',
-            'price' => 40,
-            'restaurant_id' => 1
-        ]
-    ]);
-}
-
+   
