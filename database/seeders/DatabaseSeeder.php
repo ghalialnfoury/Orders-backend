@@ -6,20 +6,36 @@ use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
-class DatabaseSeeder extends Seeder
+use Illuminate\Support\Facades\DB;
+
+public function run(): void
 {
-    use WithoutModelEvents;
+    DB::table('users')->insert([
+        [
+            'name' => 'Admin',
+            'email' => 'admin@test.com',
+            'password' => bcrypt('123456'),
+        ]
+    ]);
 
-    /**
-     * Seed the application's database.
-     */
-    public function run(): void
-    {
-        // User::factory(10)->create();
+    DB::table('restaurants')->insert([
+        [
+            'name' => 'Al Sham Restaurant',
+            'description' => 'Best Syrian food',
+        ]
+    ]);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
-    }
+    DB::table('products')->insert([
+        [
+            'name' => 'Shawarma',
+            'price' => 25,
+            'restaurant_id' => 1
+        ],
+        [
+            'name' => 'Kebab',
+            'price' => 40,
+            'restaurant_id' => 1
+        ]
+    ]);
 }
+
