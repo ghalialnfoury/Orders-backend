@@ -247,10 +247,4 @@ Route::prefix('admin')
             );
         });
     });
-use Illuminate\Support\Facades\Artisan;
-
-Route::get('/seed', function () {
-    Artisan::call('db:seed --force');
-    return 'Seed Done';
-});
 
