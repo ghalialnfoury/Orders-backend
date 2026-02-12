@@ -1,17 +1,19 @@
-return [
+    <?php
 
-    'paths' => ['api/*', 'storage/*', '*'],
+    return [
 
-    'allowed_methods' => ['*'],
+        'paths' => ['api/*', 'storage/*', '*'],
 
-    'allowed_origins' => ['*'],
+        'allowed_methods' => ['*'],
 
-    'allowed_headers' => ['*'],
+        'allowed_origins' => ['*'],
 
-    'exposed_headers' => [],
+        'allowed_headers' => ['*'],
 
-    'max_age' => 0,
+        'exposed_headers' => [],
 
-    'supports_credentials' => false,
+        'max_age' => 0,
 
-];
+        'supports_credentials' => false,
+
+    ];
