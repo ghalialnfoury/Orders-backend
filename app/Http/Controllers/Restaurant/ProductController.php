@@ -9,23 +9,11 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\Product;
 use App\Models\Category;
 
-/**
- * ProductController
- *
- * Handles restaurant product management including:
- * - Listing products
- * - Creating new products with optional image upload
- * - Updating product details and images
- * - Deleting products and their associated images
- *
- * All operations are restricted to the authenticated restaurant owner.
- */
 class ProductController extends Controller
 {
-
     /**
-     * Display a list of products belonging to the authenticated restaurant.
-     * Allows optional filtering by category.
+     * Display all products for the authenticated restaurant.
+     * Optionally filter products by category.
      */
     public function index(Request $request)
     {
@@ -38,19 +26,22 @@ class ProductController extends Controller
         }
 
         $products = Product::where('restaurant_id', $restaurant->id)
-            ->when($request->filled('category_id'), function ($q) use ($request) {
-                $q->where('category_id', $request->category_id);
+            ->when($request->filled('category_id'), function ($query) use ($request) {
+                $query->where('category_id', $request->category_id);
             })
             ->latest()
-            ->get();
+            ->get()
+            ->map(function ($product) {
+                return $product->append('image_url');
+            });
 
         return response()->json($products);
     }
 
     /**
      * Store a newly created product.
-     * Supports creating a new category if category_name is provided.
-     * Handles optional image upload and storage.
+     * Supports creating a new category or using an existing one.
+     * Handles optional image upload.
      */
     public function store(Request $request)
     {
@@ -62,7 +53,7 @@ class ProductController extends Controller
             ], 404);
         }
 
-        // Validate request data
+        // Validate incoming request
         $request->validate([
             'name'          => 'required|string|max:255',
             'price'         => 'required|numeric|min:0',
@@ -72,7 +63,7 @@ class ProductController extends Controller
             'image'         => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        // Determine product category
+        // Determine category
         if ($request->category_id) {
 
             $category = Category::where('id', $request->category_id)
@@ -92,14 +83,14 @@ class ProductController extends Controller
             ], 422);
         }
 
-        // Store uploaded image if exists
+        // Upload image if provided
         $imagePath = null;
 
         if ($request->hasFile('image')) {
             $imagePath = $request->file('image')->store('products', 'public');
         }
 
-        // Create product record
+        // Create product
         $product = Product::create([
             'name' => $request->name,
             'price' => floatval($request->price),
@@ -109,12 +100,14 @@ class ProductController extends Controller
             'image' => $imagePath,
         ]);
 
+        $product->append('image_url');
+
         return response()->json($product, 201);
     }
 
     /**
      * Update an existing product.
-     * Allows updating product details and replacing product image.
+     * Allows updating product data and replacing the image.
      */
     public function update(Request $request, $id)
     {
@@ -123,7 +116,7 @@ class ProductController extends Controller
         $product = Product::where('restaurant_id', $restaurant->id)
             ->findOrFail($id);
 
-        // Validate incoming update data
+        // Validate update data
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'price' => 'sometimes|numeric|min:0',
@@ -137,10 +130,9 @@ class ProductController extends Controller
             ],
         ]);
 
-        // Replace product image if a new image is uploaded
+        // Replace image if a new one is uploaded
         if ($request->hasFile('image')) {
 
-            // Delete old image from storage
             if ($product->image) {
                 Storage::disk('public')->delete($product->image);
             }
@@ -151,11 +143,13 @@ class ProductController extends Controller
 
         $product->update($validated);
 
+        $product->append('image_url');
+
         return response()->json($product);
     }
 
     /**
-     * Delete a product and its associated image from storage.
+     * Delete a product and remove its image from storage.
      */
     public function destroy($id)
     {
@@ -164,7 +158,7 @@ class ProductController extends Controller
         $product = Product::where('restaurant_id', $restaurant->id)
             ->findOrFail($id);
 
-        // Delete product image from storage
+        // Remove stored image
         if ($product->image) {
             Storage::disk('public')->delete($product->image);
         }
