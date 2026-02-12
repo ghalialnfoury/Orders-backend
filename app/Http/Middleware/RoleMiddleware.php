@@ -5,18 +5,22 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 
-class RoleMiddleware
+class CorsForImages
 {
-    public function handle(Request $request, Closure $next, ...$roles)
+    public function handle(Request $request, Closure $next)
     {
-        $user = auth('api')->user();
-
-        if (!$user || !in_array($user->role, $roles)) {
-            return response()->json([
-                'message' => 'Unauthorized'
-            ], 403);
+        if ($request->getMethod() === "OPTIONS") {
+            return response()->json([], 200, [
+                'Access-Control-Allow-Origin' => '*',
+                'Access-Control-Allow-Methods' => 'GET, OPTIONS',
+                'Access-Control-Allow-Headers' => '*',
+            ]);
         }
 
-        return $next($request);
+        $response = $next($request);
+
+        return $response->header('Access-Control-Allow-Origin', '*')
+            ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+            ->header('Access-Control-Allow-Headers', '*');
     }
 }
