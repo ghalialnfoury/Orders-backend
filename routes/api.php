@@ -247,4 +247,17 @@
                 );
             });
         });
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Response;
+
+Route::get('image/{path}', function ($path) {
+
+    $file = Storage::disk('public')->get($path);
+
+    return Response::make($file, 200, [
+        'Content-Type' => Storage::disk('public')->mimeType($path),
+        'Access-Control-Allow-Origin' => '*',
+    ]);
+
+})->where('path', '.*');
 
