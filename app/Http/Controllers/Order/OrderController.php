@@ -30,26 +30,31 @@ class OrderController extends Controller
                 'restaurant_id'  => $request->restaurant_id,
                 'status'         => 'pending',
                 'payment_status' => 'unpaid',
-                'total_price'    => 0,
+                'total_price'    => 0, // سيتم التحديث لاحقًا
             ]);
 
             $total = 0;
 
             foreach ($request->items as $item) {
-                $product = Product::select('id', 'price')
-                    ->findOrFail($item['product_id']);
+                // جلب كل بيانات المنتج
+                $product = Product::findOrFail($item['product_id']);
 
-                $itemTotal = $product->price * $item['quantity'];
+                // تأكد من النوع وتحويل السعر إلى float
+                $itemPrice = floatval($product->price);
+                $itemQuantity = intval($item['quantity']);
+                $itemTotal = $itemPrice * $itemQuantity;
+
                 $total += $itemTotal;
 
                 OrderItem::create([
                     'order_id'   => $order->id,
-                    'product_id'=> $product->id,
-                    'quantity'  => $item['quantity'],
-                    'price'     => $itemTotal,
+                    'product_id' => $product->id,
+                    'quantity'   => $itemQuantity,
+                    'price'      => $itemPrice,
                 ]);
             }
 
+            // تحديث التوتل بعد إنشاء كل العناصر
             $order->update([
                 'total_price' => $total
             ]);

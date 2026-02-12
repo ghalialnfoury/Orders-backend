@@ -1,18 +1,17 @@
 <?php
 
-namespace App\Http\Controllers\driver;
-use App\Http\Controllers\Controller;
-namespace App\Http\Controllers\Restaurant;
+namespace App\Http\Controllers\Driver;
+
 use App\Http\Controllers\Controller;
 use App\Models\DriverRequest;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 
 class DriverController extends Controller
 {
-
     public function index()
     {
-        return \App\Models\User::where('role','driver')
+        return User::where('role','driver')
             ->where('status','active')
             ->get();
     }

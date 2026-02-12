@@ -27,7 +27,9 @@ class Product extends Model
         'is_available' => true,
     ];
 
-    /* ================= RELATIONS ================= */
+    protected $appends = ['image_url'];
+
+    /* RELATIONSHIPS */
 
     public function restaurant()
     {
@@ -39,19 +41,22 @@ class Product extends Model
         return $this->belongsTo(Category::class);
     }
 
-    /* ================= SCOPES ================= */
+    /* SCOPES */
 
     public function scopeAvailable($query)
     {
         return $query->where('is_available', true);
     }
+/* =====================================================
+ * ACCESSORS
+ * ===================================================== */
 
-    /* ================= ACCESSORS ================= */
+public function getImageUrlAttribute()
+{
+    return $this->image
+        ? asset('storage/' . $this->image)
+        : null;
+}
 
-    public function getImageUrlAttribute()
-    {
-        return $this->image
-            ? asset('storage/products/' . $this->image)
-            : asset('images/default-product.png');
-    }
+
 }
