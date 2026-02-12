@@ -1,18 +1,21 @@
     <?php
 
-    return [
+  return [
 
-        'paths' => ['api/*', 'storage/*'],
+    'paths' => ['*'],
 
-        'allowed_methods' => ['*'],
+    'allowed_methods' => ['*'],
 
     'allowed_origins' => ['*'],
-        'allowed_headers' => ['*'],
 
-        'exposed_headers' => [],
+    'allowed_headers' => ['*'],
 
-        'max_age' => 0,
+    'exposed_headers' => [],
 
-        'supports_credentials' => false,
-    ];
+    'max_age' => 0,
+
+    'supports_credentials' => false,
+
+];
+
 
