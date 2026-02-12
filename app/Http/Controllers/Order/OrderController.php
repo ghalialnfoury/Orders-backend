@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\DB;
 class OrderController extends Controller
 {
     /**
-     * إنشاء طلب جديد
      */
     public function store(Request $request)
     {
@@ -30,16 +29,16 @@ class OrderController extends Controller
                 'restaurant_id'  => $request->restaurant_id,
                 'status'         => 'pending',
                 'payment_status' => 'unpaid',
-                'total_price'    => 0, // سيتم التحديث لاحقًا
+                'total_price'    => 0, //
             ]);
 
             $total = 0;
 
             foreach ($request->items as $item) {
-                // جلب كل بيانات المنتج
+                //
                 $product = Product::findOrFail($item['product_id']);
 
-                // تأكد من النوع وتحويل السعر إلى float
+
                 $itemPrice = floatval($product->price);
                 $itemQuantity = intval($item['quantity']);
                 $itemTotal = $itemPrice * $itemQuantity;
@@ -54,7 +53,6 @@ class OrderController extends Controller
                 ]);
             }
 
-            // تحديث التوتل بعد إنشاء كل العناصر
             $order->update([
                 'total_price' => $total
             ]);
@@ -70,8 +68,8 @@ class OrderController extends Controller
     }
 
     /**
-     * طلبات المستخدم
-     */
+
+    */
     public function myOrders()
     {
         return response()->json(
@@ -86,7 +84,6 @@ class OrderController extends Controller
     }
 
     /**
-     * تحديد طريقة الدفع
      */
     public function setPaymentMethod(Request $request, $id)
     {
@@ -112,7 +109,6 @@ class OrderController extends Controller
     }
 
     /**
-     * تأكيد الدفع
      */
     public function pay($id)
     {
